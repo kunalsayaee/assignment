@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Calculator</title>
+  <style>
+    :root{
+      --bg:#f3f4f6; --card:#ffffff; --muted:#6b7280; --accent:#10b981;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg);
+      display:flex; min-height:100vh; align-items:center; justify-content:center; padding:2rem;
+    }
+    .calculator{
+      width:320px; background:linear-gradient(180deg,#fff,#fbfbfd); border-radius:16px; box-shadow:0 8px 30px rgba(16,24,40,0.08); padding:18px;
+    }
+    .display{
+      height:72px; background:var(--card); border-radius:10px; padding:12px; display:flex; flex-direction:column; justify-content:center; text-align:right;
+      box-shadow:inset 0 -1px 0 rgba(0,0,0,0.03);
+    }
+    .display .prev{color:var(--muted); font-size:14px; min-height:18px;}
+    .display .curr{font-size:28px; font-weight:600;}
+
+    .keys{margin-top:14px; display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+    button{
+      height:56px; border-radius:10px; border:0; font-size:18px; cursor:pointer; box-shadow:0 2px 8px rgba(16,24,40,0.05);
+    }
+    button:active{transform:translateY(1px)}
+    .btn-num{background:linear-gradient(180deg,#ffffff,#f8fafc)}
+    .btn-op{background:linear-gradient(180deg,#fbf7ff,#f3ecff); color:#6b21a8}
+    .btn-eq{grid-column:span 2; background:linear-gradient(180deg,var(--accent),#059669); color:white; font-weight:600}
+    .btn-ac{background:linear-gradient(180deg,#fff1f2,#fff6f7); color:#b91c1c}
+    .btn-dot{background:linear-gradient(180deg,#ffffff,#f8fafc)}
+
+    @media (max-width:380px){ .calculator{width:100%} }
+  </style>
+</head>
+<body>
+  <section class="calculator" aria-label="Simple calculator">
+    <div class="display" role="region" aria-live="polite">
+      <div class="prev" id="prev">&nbsp;</div>
+      <div class="curr" id="curr">0</div>
+    </div>
+
+    <div class="keys">
+      <button class="btn-ac" id="clear">AC</button>
+      <button class="btn-op" data-op="/">÷</button>
+      <button class="btn-op" data-op="*">×</button>
+      <button class="btn-op" data-op="-">−</button>
+
+      <button class="btn-num" data-num="7">7</button>
+      <button class="btn-num" data-num="8">8</button>
+      <button class="btn-num" data-num="9">9</button>
+      <button class="btn-op" data-op="+">+</button>
+
+      <button class="btn-num" data-num="4">4</button>
+      <button class="btn-num" data-num="5">5</button>
+      <button class="btn-num" data-num="6">6</button>
+      <button class="btn-num" data-num="1">1</button>
+
+      <button class="btn-num" data-num="2">2</button>
+      <button class="btn-num" data-num="3">3</button>
+      <button class="btn-dot" id="dot">.</button>
+      <button class="btn-eq" id="equals">=</button>
+
+      <button class="btn-num" style="grid-column:span 2" data-num="0">0</button>
+      <button class="btn-num" data-num="00">00</button>
+      <button class="btn-op" id="back">⌫</button>
+    </div>
+  </section>
+
+  <script>
+    const prevEl = document.getElementById('prev');
+    const currEl = document.getElementById('curr');
+    let current = '0';
+    let previous = '';
+    let op = null;
+    let overwrite = false;
+
+    function updateScreen(){
+      currEl.textContent = current;
+      prevEl.textContent = previous + (op ? (' ' + op) : '');
+    }
+
+    function appendNumber(n){
+      if(overwrite){ current = n==='00' ? '0' : n; overwrite = false; return }
+      if(current === '0' && n !== '.') current = n;
+      else current = current + n;
+    }
+
+    function chooseOp(operator){
+      if(current === '' && previous === '') return;
+      if(previous === ''){
+        previous = current; op = operator; current = '0';
+      } else {
+        compute(); op = operator; overwrite = true;
+      }
+    }
+
+    function compute(){
+      try{
+        const a = parseFloat(previous);
+        const b = parseFloat(current);
+        if(isNaN(a) || isNaN(b)) return;
+        let res;
+        switch(op){
+          case '+': res = a + b; break;
+          case '-': res = a - b; break;
+          case '*': res = a * b; break;
+          case '/': res = b === 0 ? 'Error' : a / b; break;
+          default: return;
+        }
+        previous = String(res);
+        current = '0';
+        op = null;
+      } catch(e){ previous='Error'; current='0'; }
+    }
+
+    function clearAll(){ current='0'; previous=''; op=null; overwrite=false; }
+    function deleteLast(){ if(overwrite || current.length<=1) current='0'; else current = current.slice(0,-1); }
+
+    document.querySelectorAll('[data-num]').forEach(b=> b.addEventListener('click', e=>{ appendNumber(e.target.dataset.num); updateScreen(); }));
+    document.getElementById('dot').addEventListener('click', ()=>{ if(!current.includes('.')) current += '.'; updateScreen(); });
+    document.querySelectorAll('.btn-op').forEach(b=> b.addEventListener('click', e=>{ const opBtn = e.target.getAttribute('data-op'); if(opBtn) chooseOp(opBtn); else if(e.target.id==='back'){ deleteLast(); } updateScreen(); }));
+    document.getElementById('equals').addEventListener('click', ()=>{ compute(); overwrite = true; updateScreen(); });
+    document.getElementById('clear').addEventListener('click', ()=>{ clearAll(); updateScreen(); });
+
+    // keyboard support
+    window.addEventListener('keydown', (e)=>{
+      if(e.key >= '0' && e.key <= '9') { appendNumber(e.key); updateScreen(); }
+      else if(e.key === '.') { if(!current.includes('.')) current += '.'; updateScreen(); }
+      else if(['+','-','*','/'].includes(e.key)){ chooseOp(e.key); updateScreen(); }
+      else if(e.key === 'Enter' || e.key === '='){ compute(); overwrite=true; updateScreen(); }
+      else if(e.key === 'Backspace'){ deleteLast(); updateScreen(); }
+      else if(e.key.toLowerCase()==='c'){ clearAll(); updateScreen(); }
+    });
+
+    updateScreen();
+  </script>
+</body>
+</html>
